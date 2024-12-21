@@ -1,6 +1,4 @@
-<html>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <head>
+<html><head><base href=".">
   <style>
   :root {
     --primary: #E31337;
@@ -293,6 +291,18 @@
     font-size: 24px;
   }
   
+  .activity-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 12px;
+    margin-top: 5px;
+    display: inline-block;
+  }
+  
+  .activity-link:hover {
+    text-decoration: underline;
+  }
+  
   @media screen and (max-width: 600px) {
     body {
       padding: 10px;
@@ -470,259 +480,233 @@
     </div>
   </div>
   
-  <script>
-  
-  let currentUser = null;
-    hive.api.setOptions({
-      url: 'https://api.hive.blog'
-    });
-    
-    function showMessage(message, isSuccess, elementId = 'loginMessage') {
-      const messageElement = document.getElementById(elementId);
-      messageElement.textContent = message;
-      messageElement.className = 'message ' + (isSuccess ? 'success' : 'error');
-      messageElement.style.display = 'block';
+  <script>let currentUser = null;
+hive.api.setOptions({
+  url: 'https://api.hive.blog'
+});
+function showMessage(message, isSuccess, elementId = 'loginMessage') {
+  const messageElement = document.getElementById(elementId);
+  messageElement.textContent = message;
+  messageElement.className = 'message ' + (isSuccess ? 'success' : 'error');
+  messageElement.style.display = 'block';
+}
+function loginSuccess(username) {
+  currentUser = username;
+  document.getElementById('loginSection').style.display = 'none';
+  document.getElementById('dashboardContent').style.display = 'block';
+  document.querySelector('nav').style.display = 'block';
+  document.getElementById('userInfo').textContent = `Welcome, @${username}!`;
+  updateBalances();
+  updateDelegations();
+  document.getElementById('dashboardLink').addEventListener('click', function (e) {
+    e.preventDefault();
+    document.getElementById('dashboardContent').style.display = 'block';
+    document.getElementById('historyContent').style.display = 'none';
+  });
+  document.getElementById('historyLink').addEventListener('click', function (e) {
+    e.preventDefault();
+    document.getElementById('dashboardContent').style.display = 'none';
+    document.getElementById('historyContent').style.display = 'block';
+    loadAccountHistory(username);
+  });
+}
+function loadAccountHistory(username) {
+  hive.api.getAccountHistory(username, -1, 30, function (err, result) {
+    if (err) {
+      console.error('Error fetching account history:', err);
+      return;
     }
-    function loginSuccess(username) {
-      currentUser = username;
-      document.getElementById('loginSection').style.display = 'none';
-      document.getElementById('dashboardContent').style.display = 'block';
-      document.querySelector('nav').style.display = 'block'; 
-      document.getElementById('userInfo').textContent = `Welcome, @${username}!`;
-      updateBalances();
-      updateDelegations();
-      document.getElementById('dashboardLink').addEventListener('click', function (e) {
-        e.preventDefault();
-        document.getElementById('dashboardContent').style.display = 'block';
-        document.getElementById('historyContent').style.display = 'none';
-      });
-      document.getElementById('historyLink').addEventListener('click', function (e) {
-        e.preventDefault();
-        document.getElementById('dashboardContent').style.display = 'none';
-        document.getElementById('historyContent').style.display = 'block';
-        loadAccountHistory(username);
-      });
-    }
-    
-    function loadAccountHistory(username) {
-      hive.api.getAccountHistory(username, -1, 30, function(err, result) {
-        if (err) {
-          console.error('Error fetching account history:', err);
-          return;
-        }
-        
-        const activityList = document.getElementById('activityList');
-        activityList.innerHTML = '';
-    
-        result.forEach(([id, transaction]) => {
-          const op = transaction.op;
-          const type = op[0];
-          const data = op[1];
-            
-          let activityHtml = `
+    const activityList = document.getElementById('activityList');
+    activityList.innerHTML = '';
+    result.forEach(([id, transaction]) => {
+      const op = transaction.op;
+      const type = op[0];
+      const data = op[1];
+      let activityHtml = `
             <div class="activity-item">
               <div class="activity-icon">
-          `;
-            
-          switch(type) {
-            case 'transfer':
-              activityHtml += `<i class="fas fa-exchange-alt" style="color: #e74c3c;"></i>`;
-              break;
-            case 'vote':
-              activityHtml += `<i class="fas fa-thumbs-up" style="color: #2ecc71;"></i>`; 
-              break;
-            case 'comment':
-              activityHtml += `<i class="fas fa-comment" style="color: #9b59b6;"></i>`;
-              break;
-            default:
-              activityHtml += `<i class="fas fa-circle" style="color: #bdc3c7;"></i>`;
-          }
-            
-          activityHtml += `
+      `;
+      switch (type) {
+        case 'transfer':
+          activityHtml += `<i class="fas fa-exchange-alt" style="color: #e74c3c;"></i>`;
+          break;
+        case 'vote':
+          activityHtml += `<i class="fas fa-thumbs-up" style="color: #2ecc71;"></i>`;
+          break;
+        case 'comment':
+          activityHtml += `<i class="fas fa-comment" style="color: #9b59b6;"></i>`;
+          break;
+        default:
+          activityHtml += `<i class="fas fa-circle" style="color: #bdc3c7;"></i>`;
+      }
+      activityHtml += `
               </div>
               <div class="activity-details">
                 <div class="activity-type">${type}</div>
                 <div class="activity-timestamp">${new Date(transaction.timestamp).toLocaleString()}</div>
+                <a href="https://hiveblocks.com/tx/${transaction.trx_id}" target="_blank" class="activity-link">View on Hive Explorer</a>
               </div>
             </div>
           `;
-            
-          activityList.innerHTML += activityHtml;
-        });
+      activityList.innerHTML += activityHtml;
+    });
+  });
+}
+async function updateBalances() {
+  try {
+    const account = await new Promise((resolve, reject) => {
+      hive.api.getAccounts([currentUser], (err, result) => {
+        if (err) reject(err);else resolve(result[0]);
       });
+    });
+    const hiveBalance = parseFloat(account.balance).toFixed(3);
+    const hbdBalance = parseFloat(account.hbd_balance).toFixed(3);
+    const vestingShares = parseFloat(account.vesting_shares);
+    const delegatedVestingShares = parseFloat(account.delegated_vesting_shares);
+    const receivedVestingShares = parseFloat(account.received_vesting_shares);
+    const hivePower = await vestsToHive(vestingShares - delegatedVestingShares + receivedVestingShares);
+    document.getElementById('hiveBalance').textContent = `${hiveBalance} HIVE`;
+    document.getElementById('hivePower').textContent = `${hivePower.toFixed(3)} HP`;
+    document.getElementById('hbdBalance').textContent = `${hbdBalance} HBD`;
+  } catch (error) {
+    console.error('Error updating balances:', error);
+  }
+}
+async function updateDelegations() {
+  try {
+    const result = await new Promise((resolve, reject) => {
+      hive.api.getVestingDelegations(currentUser, null, 100, (err, result) => {
+        if (err) reject(err);else resolve(result);
+      });
+    });
+    const delegationTableBody = document.querySelector('#delegationTable tbody');
+    delegationTableBody.innerHTML = '';
+    for (const delegation of result) {
+      const row = document.createElement('tr');
+      const delegateeCell = document.createElement('td');
+      const amountCell = document.createElement('td');
+      delegateeCell.textContent = delegation.delegatee;
+      amountCell.textContent = `${(await vestsToHive(delegation.vesting_shares)).toFixed(3)} HP`;
+      row.appendChild(delegateeCell);
+      row.appendChild(amountCell);
+      delegationTableBody.appendChild(row);
     }
-    
-    async function updateBalances() {
-      try {
-        const account = await new Promise((resolve, reject) => {
-          hive.api.getAccounts([currentUser], (err, result) => {
-            if (err) reject(err);else resolve(result[0]);
-          });
-        });
-        const hiveBalance = parseFloat(account.balance).toFixed(3);
-        const hbdBalance = parseFloat(account.hbd_balance).toFixed(3);
-        const vestingShares = parseFloat(account.vesting_shares);
-        const delegatedVestingShares = parseFloat(account.delegated_vesting_shares);
-        const receivedVestingShares = parseFloat(account.received_vesting_shares);
-        const hivePower = await vestsToHive(vestingShares - delegatedVestingShares + receivedVestingShares);
-        document.getElementById('hiveBalance').textContent = `${hiveBalance} HIVE`;
-        document.getElementById('hivePower').textContent = `${hivePower.toFixed(3)} HP`;
-        document.getElementById('hbdBalance').textContent = `${hbdBalance} HBD`;
-      } catch (error) {
-        console.error('Error updating balances:', error);
-      }
+  } catch (error) {
+    console.error('Error updating delegations:', error);
+  }
+}
+document.getElementById('loginButton').addEventListener('click', function () {
+  const accountName = document.getElementById('accountName').value;
+  if (!accountName) {
+    showMessage('Please enter your username', false);
+    return;
+  }
+  if (typeof hive_keychain === 'undefined') {
+    document.getElementById('keychainMessage').style.display = 'block';
+    return;
+  }
+  hive_keychain.requestSignBuffer(accountName, 'Login to Hive Dashboard', 'Posting', function (response) {
+    if (response.success) {
+      loginSuccess(accountName);
+    } else {
+      showMessage('Login failed: ' + response.message, false);
     }
-    async function updateDelegations() {
-      try {
-        const result = await new Promise((resolve, reject) => {
-          hive.api.getVestingDelegations(currentUser, null, 100, (err, result) => {
-            if (err) reject(err);else resolve(result);
-          });
-        });
-        const delegationTableBody = document.querySelector('#delegationTable tbody');
-        delegationTableBody.innerHTML = '';
-        for (const delegation of result) {
-          const row = document.createElement('tr');
-          const delegateeCell = document.createElement('td');
-          const amountCell = document.createElement('td');
-          delegateeCell.textContent = delegation.delegatee;
-          amountCell.textContent = `${(await vestsToHive(delegation.vesting_shares)).toFixed(3)} HP`;
-          row.appendChild(delegateeCell);
-          row.appendChild(amountCell);
-          delegationTableBody.appendChild(row);
-        }
-      } catch (error) {
-        console.error('Error updating delegations:', error);
-      }
+  });
+});
+document.getElementById('transferForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const recipient = document.getElementById('recipient').value;
+  const amount = parseFloat(document.getElementById('amount').value).toFixed(3);
+  const memo = document.getElementById('memo').value;
+  if (!recipient || !amount) {
+    showMessage('Please fill in all required fields', false, 'transferMessage');
+    return;
+  }
+  hive_keychain.requestTransfer(currentUser, recipient, amount, memo, 'HIVE', function (response) {
+    if (response.success) {
+      showMessage('Transfer completed successfully!', true, 'transferMessage');
+      document.getElementById('transferForm').reset();
+      updateBalances();
+    } else {
+      showMessage('Transfer failed: ' + response.message, false, 'transferMessage');
     }
-
-    document.getElementById('loginButton').addEventListener('click', function () {
-      const accountName = document.getElementById('accountName').value;
-      if (!accountName) {
-        showMessage('Please enter your username', false);
+  });
+});
+document.getElementById('powerUpForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const amount = parseFloat(document.getElementById('powerUpAmount').value).toFixed(3);
+  if (!amount) {
+    showMessage('Please enter an amount', false, 'powerUpMessage');
+    return;
+  }
+  hive_keychain.requestPowerUp(currentUser, currentUser, amount, function (response) {
+    if (response.success) {
+      showMessage('Power up completed successfully!', true, 'powerUpMessage');
+      document.getElementById('powerUpForm').reset();
+      updateBalances();
+    } else {
+      showMessage('Power up failed: ' + response.message, false, 'powerUpMessage');
+    }
+  });
+});
+document.getElementById('delegateForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const delegatee = document.getElementById('delegatee').value;
+  const amount = parseFloat(document.getElementById('delegateAmount').value).toFixed(3);
+  if (!delegatee || !amount) {
+    showMessage('Please fill in all required fields', false, 'delegateMessage');
+    return;
+  }
+  hive_keychain.requestDelegation(currentUser, delegatee, amount, 'HP', function (response) {
+    if (response.success) {
+      showMessage('Delegation completed successfully!', true, 'delegateMessage');
+      document.getElementById('delegateForm').reset();
+      updateBalances();
+    } else {
+      showMessage('Delegation failed: ' + response.message, false, 'delegateMessage');
+    }
+  });
+});
+async function vestsToHive(vests) {
+  return new Promise((resolve, reject) => {
+    hive.api.getDynamicGlobalProperties(function (err, result) {
+      if (err) {
+        reject(err);
         return;
       }
-      if (typeof hive_keychain === 'undefined') {
-        document.getElementById('keychainMessage').style.display = 'block';
+      const totalVests = parseFloat(result.total_vesting_shares.split(' ')[0]);
+      const totalHive = parseFloat(result.total_vesting_fund_hive.split(' ')[0]);
+      const hivePerVest = totalHive / totalVests;
+      const hive = parseFloat(vests) * hivePerVest;
+      resolve(hive);
+    });
+  });
+}
+async function hiveToVests(hive) {
+  return new Promise((resolve, reject) => {
+    hive.api.getDynamicGlobalProperties(function (err, result) {
+      if (err) {
+        reject(err);
         return;
       }
-      hive_keychain.requestSignBuffer(accountName, 'Login to Hive Dashboard', 'Posting', function (response) {
-        if (response.success) {
-          loginSuccess(accountName);
-        } else {
-          showMessage('Login failed: ' + response.message, false);
-        }
-      });
+      const totalVests = parseFloat(result.total_vesting_shares.split(' ')[0]);
+      const totalHive = parseFloat(result.total_vesting_fund_hive.split(' ')[0]);
+      const vestsPerHive = totalVests / totalHive;
+      const vests = parseFloat(hive) * vestsPerHive;
+      resolve(vests.toFixed(6));
     });
-
-    document.getElementById('transferForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      const recipient = document.getElementById('recipient').value;
-      const amount = parseFloat(document.getElementById('amount').value).toFixed(3);
-      const memo = document.getElementById('memo').value;
-      if (!recipient || !amount) {
-        showMessage('Please fill in all required fields', false, 'transferMessage');
-        return;
-      }
-      hive_keychain.requestTransfer(currentUser, recipient, amount, memo, 'HIVE', function (response) {
-        if (response.success) {
-          showMessage('Transfer completed successfully!', true, 'transferMessage');
-          document.getElementById('transferForm').reset();
-          updateBalances();
-        } else {
-          showMessage('Transfer failed: ' + response.message, false, 'transferMessage');
-        }
-      });
-    });
-    document.getElementById('powerUpForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      const amount = parseFloat(document.getElementById('powerUpAmount').value).toFixed(3);
-      if (!amount) {
-        showMessage('Please enter an amount', false, 'powerUpMessage');
-        return;
-      }
-      hive_keychain.requestPowerUp(currentUser, currentUser, amount, function (response) {
-        if (response.success) {
-          showMessage('Power up completed successfully!', true, 'powerUpMessage');
-          document.getElementById('powerUpForm').reset();
-          updateBalances();
-        } else {
-          showMessage('Power up failed: ' + response.message, false, 'powerUpMessage');
-        }
-      });
-    });
-      
-    document.getElementById('delegateForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const delegatee = document.getElementById('delegatee').value;
-        const amount = parseFloat(document.getElementById('delegateAmount').value).toFixed(3);
-    
-        if (!delegatee || !amount) {
-            showMessage('Please fill in all required fields', false, 'delegateMessage');
-            return;
-        }
-    
-        hive_keychain.requestDelegation(
-            currentUser,
-            delegatee,
-            amount,
-            'HP',
-            function(response) {
-                if (response.success) {
-                    showMessage('Delegation completed successfully!', true, 'delegateMessage');
-                    document.getElementById('delegateForm').reset();
-                    updateBalances(); 
-                } else {
-                    showMessage('Delegation failed: ' + response.message, false, 'delegateMessage');
-                }
-            }
-        );
-    });
-    
-    async function vestsToHive(vests) {
-        return new Promise((resolve, reject) => {
-            hive.api.getDynamicGlobalProperties(function(err, result) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                const totalVests = parseFloat(result.total_vesting_shares.split(' ')[0]);
-                const totalHive = parseFloat(result.total_vesting_fund_hive.split(' ')[0]);
-                const hivePerVest = totalHive / totalVests;
-                const hive = parseFloat(vests) * hivePerVest;
-                resolve(hive);
-            });
-        });
-    }
-      
-    async function hiveToVests(hive) {
-      return new Promise((resolve, reject) => {
-        hive.api.getDynamicGlobalProperties(function (err, result) {
-          if (err) {
-            reject(err);
-            return;
-          }
-          const totalVests = parseFloat(result.total_vesting_shares.split(' ')[0]);
-          const totalHive = parseFloat(result.total_vesting_fund_hive.split(' ')[0]);
-          const vestsPerHive = totalVests / totalHive;
-          const vests = parseFloat(hive) * vestsPerHive;
-          resolve(vests.toFixed(6));
-        });
-      });
-    }
-    
-    const themeToggle = document.getElementById('themeToggle');
-    const body = document.body;
-    themeToggle.addEventListener('click', function () {
-        body.classList.toggle('dark-theme');
-        if (body.classList.contains('dark-theme')) {
-        themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-        } else {
-        themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-        }
-    });
-    
-  </script>
+  });
+}
+const themeToggle = document.getElementById('themeToggle');
+const body = document.body;
+themeToggle.addEventListener('click', function () {
+  body.classList.toggle('dark-theme');
+  if (body.classList.contains('dark-theme')) {
+    themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+  } else {
+    themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+  }
+});</script>
   
   </body>
   </html>
