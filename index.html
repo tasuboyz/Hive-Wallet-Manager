@@ -593,6 +593,7 @@
         console.error('Error updating delegations:', error);
       }
     }
+
     document.getElementById('loginButton').addEventListener('click', function () {
       const accountName = document.getElementById('accountName').value;
       if (!accountName) {
@@ -600,7 +601,7 @@
         return;
       }
       if (typeof hive_keychain === 'undefined') {
-        showMessage('Hive Keychain extension is not installed', false);
+        document.getElementById('keychainMessage').style.display = 'block';
         return;
       }
       hive_keychain.requestSignBuffer(accountName, 'Login to Hive Dashboard', 'Posting', function (response) {
@@ -611,6 +612,7 @@
         }
       });
     });
+
     document.getElementById('transferForm').addEventListener('submit', function (e) {
       e.preventDefault();
       const recipient = document.getElementById('recipient').value;
