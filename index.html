@@ -389,7 +389,7 @@
       <h2>Login with Hive Keychain</h2>
       <div class="input-icon">
         <i class="fas fa-user"></i>
-        <input type="text" id="accountName" placeholder="Enter your Hive username">
+        <input type="text" id="accountName" placeholder="Enter your Hive username" style="text-transform: lowercase;">
       </div>
       <button id="loginButton">Login</button>
       <div id="loginMessage" class="message"></div>
@@ -598,7 +598,7 @@ async function updateDelegations() {
   }
 }
 document.getElementById('loginButton').addEventListener('click', function () {
-  const accountName = document.getElementById('accountName').value;
+  const accountName = document.getElementById('accountName').value.toLowerCase();
   if (!accountName) {
     showMessage('Please enter your username', false);
     return;
@@ -633,6 +633,7 @@ document.getElementById('transferForm').addEventListener('submit', function (e) 
       showMessage('Transfer failed: ' + response.message, false, 'transferMessage');
     }
   });
+  updateDelegations();
 });
 document.getElementById('powerUpForm').addEventListener('submit', function (e) {
   e.preventDefault();
@@ -646,6 +647,7 @@ document.getElementById('powerUpForm').addEventListener('submit', function (e) {
       showMessage('Power up completed successfully!', true, 'powerUpMessage');
       document.getElementById('powerUpForm').reset();
       updateBalances();
+      updateDelegations();
     } else {
       showMessage('Power up failed: ' + response.message, false, 'powerUpMessage');
     }
@@ -668,6 +670,7 @@ document.getElementById('delegateForm').addEventListener('submit', function (e) 
       showMessage('Delegation failed: ' + response.message, false, 'delegateMessage');
     }
   });
+  updateDelegations();
 });
 async function vestsToHive(vests) {
   return new Promise((resolve, reject) => {
